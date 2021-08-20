@@ -61,9 +61,9 @@ void sig_int(int signo)
 
     gsl_histogram_fprintf(stdout, histo, "%g", "%g");
     gsl_histogram_free(histo);
-    if (histo_overflow > 0) {
-        printf("overflow: %ld\n", histo_overflow);
-    }
+    //if (histo_overflow > 0) {
+    printf("# overflow: %ld\n", histo_overflow);
+    //}
 
     exit(0);
 }
