@@ -29,16 +29,15 @@ int bufsize = 2*1024*1024;
 
 int usage()
 {
-    char msg[] = "Usage: ./read-bytes-histo [-b bufsize] [-w bin_width] [-B n_bin] [-t TIMEOUT] ip_address:port\n"
+    //char msg[] = "Usage: ./read-sock-histo [-b bufsize] [-w bin_width] [-B n_bin] [-t TIMEOUT] ip_address:port x_min x_max n_bin\n"
+    char msg[] = "Usage: ./read-sock-histo [-b bufsize] [-t TIMEOUT] ip_address:port x_min x_max n_bin\n"
                  "example of ip_address:port\n"
                  "remote_host:1234\n"
                  "192.168.10.16:24\n"
                  "default port: 1234\n"
                  " Options:\n"
                  "    -b bufsize: suffix k for kilo (1024), m for mega(1024*1024) (default 2MB)\n"
-                 "    -t TIMEOUT: seconds.  (default: 10 seconds)\n"
-                 "    -w bin_width: default 1460 bytes\n"
-                 "    -B n_bin: number of bins.  histogram range [0, bin_width*n_bin) default 30\n";
+                 "    -t TIMEOUT: seconds.  (default: 10 seconds)\n";
     fprintf(stderr, "%s\n", msg);
 
     return 0;
@@ -55,8 +54,9 @@ void sig_int(int signo)
     fprintf(stderr, "running %ld.%06ld sec\n", elapse.tv_sec, elapse.tv_usec);
     double elapsed_time        = elapse.tv_sec + 0.000001*elapse.tv_usec;
     double transfer_rate_MB_s  = (double)total_bytes / elapsed_time / 1024.0 / 1024.0;
+    double transfer_rate_Gbps  = (double)total_bytes * 8 / elapsed_time / 1000000000.0;
     double read_bytes_per_read = (double)total_bytes / (double)read_count / 1024.0;
-    fprintf(stderr, "transfer_rate: %.3f MB/s\n", transfer_rate_MB_s);
+    fprintf(stderr, "transfer_rate: %.3f MB/s %.3f Gbps\n", transfer_rate_MB_s, transfer_rate_Gbps);
     fprintf(stderr, "read_bytes_per_read: %.3f kB/read\n", read_bytes_per_read);
 
     gsl_histogram_fprintf(stdout, histo, "%g", "%g");
@@ -71,9 +71,7 @@ void sig_int(int signo)
 int main(int argc, char *argv[])
 {
     int c;
-    int n_bin = 30;
     int period = 10; /* default run time (10 seconds) */
-    int bin_width = 1460;
 
     while ( (c = getopt(argc, argv, "b:dht:w:B:")) != -1) {
         switch (c) {
@@ -90,12 +88,6 @@ int main(int argc, char *argv[])
             case 't':
                 period = strtol(optarg, NULL, 0);
                 break;
-            case 'w':
-                bin_width = get_num(optarg);
-                break;
-            case 'B':
-                n_bin = strtol(optarg, NULL, 0);
-                break;
             default:
                 break;
         }
@@ -104,7 +96,7 @@ int main(int argc, char *argv[])
     argc -= optind;
     argv += optind;
 
-    if (argc != 1) {
+    if (argc != 4) {
         usage();
         exit(1);
     }
@@ -117,12 +109,16 @@ int main(int argc, char *argv[])
         port = strtol(tmp, NULL, 0);
     }
 
+    double x_min = (double) get_num(argv[1]);
+    double x_max = (double) get_num(argv[2]);
+    int n_bin    = strtol(argv[3], NULL, 0);
+
     my_signal(SIGINT,  sig_int);
     my_signal(SIGTERM, sig_int);
     my_signal(SIGALRM, sig_int);
 
     histo = gsl_histogram_alloc(n_bin);
-    gsl_histogram_set_ranges_uniform(histo, 0, bin_width*n_bin);
+    gsl_histogram_set_ranges_uniform(histo, x_min, x_max);
 
     int sockfd = tcp_socket();
     if (sockfd < 0) {
