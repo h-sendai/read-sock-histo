@@ -22,6 +22,8 @@ root# apt install libgsl-dev
 
 - -b bufsize: デフォルト 2MB
 - -t run_sec: 走らせる秒数。デフォルト10秒。
+- -w bin_width: デフォルト 1460バイト。
+- -B n_bin: ビン数。ヒストグラム範囲は[0, bin_width*n_bin)になる。
 
 ヒストグラムデータはstdoutに、ランサマリはstderrにでる。
 
